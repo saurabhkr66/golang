@@ -1,29 +1,62 @@
 package main
 
-import(
+import (
+	"context"
 	"fmt"
-	"github.com/julienschmidt/httprouter"
-	"gopkg.in/mgo.v2"
 	"net/http"
+	"time"
 
-
+	"github.com/julienschmidt/httprouter"
+	"go.mongodb.org/mongo-driver/mongo"
+	"go.mongodb.org/mongo-driver/mongo/options"
+	"mongo-golang/controllers"
 )
 
-func main(){
+func main() {
+	// Declare and initialize the client
+	client := getSession()
+	uc := controllers.NewUserController(client)
 
-	r:= httprouter.New()
-	uc:=controllers.NewController(getSession())
+	// Set up router
+	r := httprouter.New()
+	r.GET("/user/:id", uc.GetUser)
+	r.POST("/user", uc.Create)
+	r.DELETE("/user/:id", uc.DeleteUser)
 
-	r.GET("/user/:id",uc.GetUser)
-	r.POST("/user",uc.CreateUser)
-    r.DELETE("user/:id",uc.DeleteUser)
-
-	http.ListenAndServe("http://localhost:9000",r);
+	fmt.Println("Server running at :9000")
+	http.ListenAndServe(":9000", r)
 }
-func getSession() *mgo.Session{
-	s,err:=mgo.Dial("mongodb+srv://sauravkum420:tLmcT4yumtsf941v@cluster0.jxadh.mongodb.net/")
-    if err!=nil{
-        panic(err)
-    }
-    return s
+
+func getSession() *mongo.Client {
+	// MongoDB connection string
+	uri := "mongodb+srv://sauravkum420:3XmFmOS2yLCVCLIP@cluster0.i1zp1.mongodb.net/"
+
+	// Create a new client
+	client, err := mongo.NewClient(options.Client().ApplyURI(uri))
+	if err != nil {
+		fmt.Println("Failed to create MongoDB client:", err)
+		panic(err)
+	}
+
+	// Set up a context with a timeout for the connection
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+
+	// Connect to MongoDB
+	err = client.Connect(ctx)
+	if err != nil {
+		fmt.Println("Failed to connect to MongoDB:", err)
+		panic(err)
+	}
+
+	// Test the connection
+	err = client.Ping(ctx, nil)
+	if err != nil {
+		fmt.Println("MongoDB ping failed:", err)
+		panic(err)
+	}
+
+	fmt.Println("Connected to MongoDB successfully!")
+	return client
 }
+// 3XmFmOS2yLCVCLIP
